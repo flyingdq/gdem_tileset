@@ -294,6 +294,21 @@ inline string stringReplace(string str, string search, string replacement)
 	return strCopy;
 }
 
+inline string stringReplaceAll(const std::string& str, const std::string& from, const std::string& to) {
+    if(from.empty())
+        return str;
+
+	string strCopy = str;
+
+    size_t start_pos = 0;
+    while((start_pos = strCopy.find(from, start_pos)) != std::string::npos) {
+        strCopy.replace(start_pos, from.length(), to);
+        start_pos += to.length(); // In case 'to' contains 'from', like replacing 'x' with 'yx'
+    }
+
+	return strCopy;
+}
+
 // see https://stackoverflow.com/questions/23943728/case-insensitive-standard-string-comparison-in-c
 inline bool icompare_pred(unsigned char a, unsigned char b)
 {

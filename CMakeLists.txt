@@ -27,3 +27,6 @@ add_executable(${PROJECT_NAME} ${CPP_FILES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${GDAL_INCLUDE_DIR})
 target_link_libraries(${PROJECT_NAME} ${GDAL_LIBRARY})
+
+add_executable(rename "./src/rename/main.cpp")
+target_include_directories(rename PRIVATE "./src")
