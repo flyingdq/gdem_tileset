@@ -84,7 +84,7 @@ inline string formatNumber(T number, int decimals = 0)
 {
 	stringstream ss;
 
-	ss.imbue(std::locale(std::cout.getloc(), new punct_facet));
+	// ss.imbue(std::locale(std::cout.getloc(), new punct_facet));
 	ss << std::fixed << std::setprecision(decimals);
 	ss << number;
 
