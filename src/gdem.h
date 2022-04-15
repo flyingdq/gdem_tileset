@@ -128,10 +128,16 @@ public:
 
     void makeNullImage(int width, int height, std::string format, std::string type, std::string out_dir);
 
+    // for debug
+    void repairImage(int z, int x, int y, int width, int height,
+                     std::string format, std::string type, std::string out_dir, State &state);
+
 private:
     std::map<int, std::string> tile_map;
     TileCache tile_cache;
     DEMTree tile_tree;
 
     std::string default_projection;
+
+    std::mutex repair_mutex;
 };

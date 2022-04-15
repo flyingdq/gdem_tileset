@@ -130,7 +130,8 @@ void tileset(GdemPool &gdem_pool, State &state, int max_lod, int tile_size, stri
                 state.duration = now() - tStart;
 
                 lastReport = now();
-            } });
+            } 
+        });
 
     int z = max_lod;
     {
@@ -139,12 +140,28 @@ void tileset(GdemPool &gdem_pool, State &state, int max_lod, int tile_size, stri
         int y_num = 1 << z;
         for (int x = 0; x < x_num; x++)
         {
+            double x_step = 360.0 / x_num;
+            if(!gdem_pool.contains(-180.0 + x * x_step, -90.0, -180.0 + x * x_step + x_step, 90.0))
+            {
+                lock_guard<mutex> lock(mtx);
+
+                tilesProcessed = tilesProcessed + y_num;
+                if (now() - lastReport > 1.0)
+                {
+                    state.tilesProcessed = tilesProcessed;
+                    state.duration = now() - tStart;
+
+                    lastReport = now();
+                } 
+                continue;
+            }
+
             fs::create_directories(outdir + "/" + formatNumber(z) + "/" + formatNumber(x));
             for (int y = 0; y < y_num; y++)
             {
                 while (true)
                 {
-                    if (active_tasks > 100)
+                    if (active_tasks > 10000)
                     {
                         std::this_thread::sleep_for(10ms);
                     }
@@ -237,6 +254,22 @@ void makelod(GdemPool &gdem_pool, State &state, int max_lod, int tile_size, stri
         int y_num = 1 << z;
         for (int x = 0; x < x_num; x++)
         {
+            double x_step = 360.0 / x_num;
+            if(!gdem_pool.contains(-180.0 + x * x_step, -90.0, -180.0 + x * x_step + x_step, 90.0))
+            {
+                lock_guard<mutex> lock(mtx);
+
+                tilesProcessed = tilesProcessed + y_num;
+                if (now() - lastReport > 1.0)
+                {
+                    state.tilesProcessed = tilesProcessed;
+                    state.duration = now() - tStart;
+
+                    lastReport = now();
+                } 
+                continue;
+            }
+
             fs::create_directories(outdir + "/" + formatNumber(z) + "/" + formatNumber(x));
             for (int y = 0; y < y_num; y++)
             {
@@ -288,6 +321,7 @@ int main(int argc, char **argv)
     args.addArgument("out_format", "output image format, grey default, [grey, rgba]");
     args.addArgument("out_type", "output image type, png default, [png, tif]");
     args.addArgument("mercator", "out tileset is mercator projection, nums of x is 1 at level 0, nums of y is 1 at level 0");
+    args.addArgument("no_tileset", "skip tileset process");
 
     if (args.has("help"))
     {
@@ -347,6 +381,7 @@ int main(int argc, char **argv)
     int tile_size = args.get("tile_size").as<int>(256);
     string out_format = args.get("out_format").as<string>("grey");
     string out_type = args.get("out_type").as<string>("png");
+    bool has_tileset = !args.has("no_tileset");
 
     State state;
     state.numPasses = 3;
@@ -355,14 +390,21 @@ int main(int argc, char **argv)
     GdemPool gdem_pool;
     gdem_pool.init(source, max_lod, tile_size, state);
 
-    // double ele = gdem_pool.getElevation(8.0, 3.0);
-    // ele = gdem_pool.getElevation(8.01, 3.01);
+    // gdem_pool.repairImage(11, 837, 416, tile_size, tile_size, out_format, out_type, outdir, state);
+    // return 0;
+
+    //double ele = gdem_pool.getElevation(120.81127,23.24386, state);
+    //ele = gdem_pool.getElevation(120.81545,23.24706, state);
 
     // string path = outdir + "/" + formatNumber(0) + "/" + formatNumber(0);
     // fs::create_directories(path);
     // gdem_pool.makeElevationImage(0, 0, 0, tile_size, tile_size, out_format, out_type, outdir);
 
-    tileset(gdem_pool, state, max_lod, tile_size, out_format, out_type, outdir);
+    // gdem_pool.makeElevationImage(12, 1674, 820, tile_size, tile_size, out_format, out_type, outdir, state);
+    //return 0;
+
+    if (has_tileset)
+        tileset(gdem_pool, state, max_lod, tile_size, out_format, out_type, outdir);
 
     makelod(gdem_pool, state, max_lod, tile_size, out_format, out_type, outdir);
 

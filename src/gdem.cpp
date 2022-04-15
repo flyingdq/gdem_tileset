@@ -243,7 +243,7 @@ double GdemPool::getElevation(double lon, double lat, State &state)
         // }
 
         int xOffset = (ilon_block % 16) * 225;
-        int yOffset = (ilat_block % 16) * 225;
+        int yOffset = (15 - (ilat_block % 16)) * 225; // ilat_block是从左下角开始的，yOffset是从图像左上角起始
         auto code = poBand->RasterIO(GDALRWFlag::GF_Read, xOffset, yOffset, 226, 226, pTileBlock->data, 226, 226, dataType, 0, 0);
         if (code != CPLErr::CE_None)
         {
@@ -301,10 +301,10 @@ void GdemPool::makeElevation(double west, double south, double east, double nort
 void GdemPool::makeElevationImage(double west, double south, double east, double north,
                                   int width, int height, string format, string type, string path, State &state)
 {
-    if (!contains(west, south, east, north))
+    if (fs::exists(path))
         return;
 
-    if (fs::exists(path))
+    if (!contains(west, south, east, north))
         return;
 
     if (format == "grey")
@@ -421,162 +421,161 @@ void GdemPool::makeLodImage(int z, int x, int y, int width, int height,
         int subwidth = (int)(width / 2 + 1);
         int subheight = (int)(height / 2 + 1);
         int16_t *subdata = new int16_t[subwidth * subheight];
-        if (icompare(type, "png"))
+        
+        if (exist00)
         {
-            if (exist00)
+            GDALDataset *poDataset = static_cast<GDALDataset *>(GDALOpen(path00.c_str(), GA_ReadOnly));
+            if (!poDataset)
             {
-                GDALDataset *poDataset = static_cast<GDALDataset *>(GDALOpen(path00.c_str(), GA_ReadOnly));
-                if (!poDataset)
-                {
-                    logger::WARN(path00 + " cannot be opened.");
-                    logger::WARN("try to recreate " + path00);
-                    fs::remove(path00);
-                    makeElevationImage(z + 1, x * 2, y * 2, width, height, format, type, out_dir, state);
-                    poDataset = static_cast<GDALDataset *>(GDALOpen(path00.c_str(), GA_ReadOnly));
-                }
-
-                auto code = poDataset->RasterIO(GDALRWFlag::GF_Read, 0, 0, width, height,
-                                                subdata, subwidth, subheight, GDT_Int16, 1, nullptr, 0, 0, 0);
-                if (code != CPLErr::CE_None)
-                {
-                    logger::WARN(path00 + " cannot be opened.");
-                    logger::WARN("try to recreate " + path00);
-                    fs::remove(path00);
-                    makeElevationImage(z + 1, x * 2, y * 2, width, height, format, type, out_dir, state);
-                    poDataset = static_cast<GDALDataset *>(GDALOpen(path00.c_str(), GA_ReadOnly));
-                    code = poDataset->RasterIO(GDALRWFlag::GF_Read, 0, 0, width, height,
-                                               subdata, subwidth, subheight, GDT_Int16, 1, nullptr, 0, 0, 0);
-                }
-
-                if (code != CPLErr::CE_None)
-                    return;
-
-                for (int y = 0; y < subheight; y++)
-                {
-                    for (int x = 0; x < subwidth; x++)
-                    {
-                        data[y * width + x] = subdata[y * subwidth + x];
-                    }
-                }
-                GDALClose(poDataset);
+                logger::WARN(path00 + " cannot be opened.");
+                logger::WARN("try to recreate " + path00);
+                fs::remove(path00);
+                makeElevationImage(z + 1, x * 2, y * 2, width, height, format, type, out_dir, state);
+                poDataset = static_cast<GDALDataset *>(GDALOpen(path00.c_str(), GA_ReadOnly));
             }
 
-            if (exist01)
+            auto code = poDataset->RasterIO(GDALRWFlag::GF_Read, 0, 0, width, height,
+                                            subdata, subwidth, subheight, GDT_Int16, 1, nullptr, 0, 0, 0);
+            if (code != CPLErr::CE_None)
             {
-                GDALDataset *poDataset = static_cast<GDALDataset *>(GDALOpen(path01.c_str(), GA_ReadOnly));
-                if (!poDataset)
-                {
-                    logger::WARN(path01 + " cannot be opened.");
-                    logger::WARN("try to recreate " + path01);
-                    fs::remove(path01);
-                    makeElevationImage(z + 1, x * 2, y * 2 + 1, width, height, format, type, out_dir, state);
-                    poDataset = static_cast<GDALDataset *>(GDALOpen(path01.c_str(), GA_ReadOnly));
-                }
-
-                auto code = poDataset->RasterIO(GDALRWFlag::GF_Read, 0, 0, width, height,
-                                                subdata, subwidth, subheight, GDT_Int16, 1, nullptr, 0, 0, 0);
-                if (code != CPLErr::CE_None)
-                {
-                    logger::WARN(path01 + " cannot be opened.");
-                    logger::WARN("try to recreate " + path01);
-                    fs::remove(path01);
-                    makeElevationImage(z + 1, x * 2, y * 2 + 1, width, height, format, type, out_dir, state);
-                    poDataset = static_cast<GDALDataset *>(GDALOpen(path01.c_str(), GA_ReadOnly));
-                    code = poDataset->RasterIO(GDALRWFlag::GF_Read, 0, 0, width, height,
-                                               subdata, subwidth, subheight, GDT_Int16, 1, nullptr, 0, 0, 0);
-                }
-
-                if (code != CPLErr::CE_None)
-                    return;
-
-                for (int y = 0; y < subheight; y++)
-                {
-                    for (int x = 0; x < subwidth; x++)
-                    {
-                        data[(height - subheight + y) * width + x] = subdata[y * subwidth + x];
-                    }
-                }
+                logger::WARN(path00 + " cannot be opened.");
+                logger::WARN("try to recreate " + path00);
                 GDALClose(poDataset);
+                fs::remove(path00);
+                makeElevationImage(z + 1, x * 2, y * 2, width, height, format, type, out_dir, state);
+                poDataset = static_cast<GDALDataset *>(GDALOpen(path00.c_str(), GA_ReadOnly));
+                code = poDataset->RasterIO(GDALRWFlag::GF_Read, 0, 0, width, height,
+                                           subdata, subwidth, subheight, GDT_Int16, 1, nullptr, 0, 0, 0);
             }
 
-            if (exist10)
+            if (code != CPLErr::CE_None)
+                return;
+
+            for (int y = 0; y < subheight; y++)
             {
-                GDALDataset *poDataset = static_cast<GDALDataset *>(GDALOpen(path10.c_str(), GA_ReadOnly));
-                if (!poDataset)
+                for (int x = 0; x < subwidth; x++)
                 {
-                    logger::WARN(path10 + " cannot be opened.");
-                    logger::WARN("try to recreate " + path10);
-                    fs::remove(path10);
-                    makeElevationImage(z + 1, x * 2 + 1, y * 2, width, height, format, type, out_dir, state);
-                    poDataset = static_cast<GDALDataset *>(GDALOpen(path10.c_str(), GA_ReadOnly));
+                    data[y * width + x] = subdata[y * subwidth + x];
                 }
-
-                auto code = poDataset->RasterIO(GDALRWFlag::GF_Read, 0, 0, width, height,
-                                                subdata, subwidth, subheight, GDT_Int16, 1, nullptr, 0, 0, 0);
-                if (code != CPLErr::CE_None)
-                {
-                    logger::WARN(path10 + " cannot be opened.");
-                    logger::WARN("try to recreate " + path10);
-                    fs::remove(path10);
-                    makeElevationImage(z + 1, x * 2 + 1, y * 2, width, height, format, type, out_dir, state);
-                    poDataset = static_cast<GDALDataset *>(GDALOpen(path10.c_str(), GA_ReadOnly));
-                    code = poDataset->RasterIO(GDALRWFlag::GF_Read, 0, 0, width, height,
-                                               subdata, subwidth, subheight, GDT_Int16, 1, nullptr, 0, 0, 0);
-                }
-
-                if (code != CPLErr::CE_None)
-                    return;
-
-                for (int y = 0; y < subheight; y++)
-                {
-                    for (int x = 0; x < subwidth; x++)
-                    {
-                        data[y * width + width - subwidth + x] = subdata[y * subwidth + x];
-                    }
-                }
-                GDALClose(poDataset);
             }
-
-            if (exist11)
-            {
-                GDALDataset *poDataset = static_cast<GDALDataset *>(GDALOpen(path11.c_str(), GA_ReadOnly));
-                if (!poDataset)
-                {
-                    logger::WARN(path11 + " cannot be opened.");
-                    logger::WARN("try to recreate " + path11);
-                    fs::remove(path11);
-                    makeElevationImage(z + 1, x * 2 + 1, y * 2 + 1, width, height, format, type, out_dir, state);
-                    poDataset = static_cast<GDALDataset *>(GDALOpen(path11.c_str(), GA_ReadOnly));
-                }
-
-                auto code = poDataset->RasterIO(GDALRWFlag::GF_Read, 0, 0, width, height,
-                                                subdata, subwidth, subheight, GDT_Int16, 1, nullptr, 0, 0, 0);
-                if (code != CPLErr::CE_None)
-                {
-                    logger::WARN(path11 + " cannot be opened.");
-                    logger::WARN("try to recreate " + path11);
-                    fs::remove(path11);
-                    makeElevationImage(z + 1, x * 2 + 1, y * 2 + 1, width, height, format, type, out_dir, state);
-                    poDataset = static_cast<GDALDataset *>(GDALOpen(path11.c_str(), GA_ReadOnly));
-                    code = poDataset->RasterIO(GDALRWFlag::GF_Read, 0, 0, width, height,
-                                               subdata, subwidth, subheight, GDT_Int16, 1, nullptr, 0, 0, 0);
-                }
-
-                if (code != CPLErr::CE_None)
-                    return;
-
-                for (int y = 0; y < subheight; y++)
-                {
-                    for (int x = 0; x < subwidth; x++)
-                    {
-                        data[(height - subheight + y) * width + width - subwidth + x] = subdata[y * subwidth + x];
-                    }
-                }
-                GDALClose(poDataset);
-            }
+            GDALClose(poDataset);
         }
-        else if (icompare(type, "tif"))
+
+        if (exist01)
         {
+            GDALDataset *poDataset = static_cast<GDALDataset *>(GDALOpen(path01.c_str(), GA_ReadOnly));
+            if (!poDataset)
+            {
+                logger::WARN(path01 + " cannot be opened.");
+                logger::WARN("try to recreate " + path01);
+                fs::remove(path01);
+                makeElevationImage(z + 1, x * 2, y * 2 + 1, width, height, format, type, out_dir, state);
+                poDataset = static_cast<GDALDataset *>(GDALOpen(path01.c_str(), GA_ReadOnly));
+            }
+
+            auto code = poDataset->RasterIO(GDALRWFlag::GF_Read, 0, 0, width, height,
+                                            subdata, subwidth, subheight, GDT_Int16, 1, nullptr, 0, 0, 0);
+            if (code != CPLErr::CE_None)
+            {
+                logger::WARN(path01 + " cannot be opened.");
+                logger::WARN("try to recreate " + path01);
+                GDALClose(poDataset);
+                fs::remove(path01);
+                makeElevationImage(z + 1, x * 2, y * 2 + 1, width, height, format, type, out_dir, state);
+                poDataset = static_cast<GDALDataset *>(GDALOpen(path01.c_str(), GA_ReadOnly));
+                code = poDataset->RasterIO(GDALRWFlag::GF_Read, 0, 0, width, height,
+                                           subdata, subwidth, subheight, GDT_Int16, 1, nullptr, 0, 0, 0);
+            }
+
+            if (code != CPLErr::CE_None)
+                return;
+
+            for (int y = 0; y < subheight; y++)
+            {
+                for (int x = 0; x < subwidth; x++)
+                {
+                    data[(height - subheight + y) * width + x] = subdata[y * subwidth + x];
+                }
+            }
+            GDALClose(poDataset);
+        }
+
+        if (exist10)
+        {
+            GDALDataset *poDataset = static_cast<GDALDataset *>(GDALOpen(path10.c_str(), GA_ReadOnly));
+            if (!poDataset)
+            {
+                logger::WARN(path10 + " cannot be opened.");
+                logger::WARN("try to recreate " + path10);
+                fs::remove(path10);
+                makeElevationImage(z + 1, x * 2 + 1, y * 2, width, height, format, type, out_dir, state);
+                poDataset = static_cast<GDALDataset *>(GDALOpen(path10.c_str(), GA_ReadOnly));
+            }
+
+            auto code = poDataset->RasterIO(GDALRWFlag::GF_Read, 0, 0, width, height,
+                                            subdata, subwidth, subheight, GDT_Int16, 1, nullptr, 0, 0, 0);
+            if (code != CPLErr::CE_None)
+            {
+                logger::WARN(path10 + " cannot be opened.");
+                logger::WARN("try to recreate " + path10);
+                GDALClose(poDataset);
+                fs::remove(path10);
+                makeElevationImage(z + 1, x * 2 + 1, y * 2, width, height, format, type, out_dir, state);
+                poDataset = static_cast<GDALDataset *>(GDALOpen(path10.c_str(), GA_ReadOnly));
+                code = poDataset->RasterIO(GDALRWFlag::GF_Read, 0, 0, width, height,
+                                           subdata, subwidth, subheight, GDT_Int16, 1, nullptr, 0, 0, 0);
+            }
+
+            if (code != CPLErr::CE_None)
+                return;
+
+            for (int y = 0; y < subheight; y++)
+            {
+                for (int x = 0; x < subwidth; x++)
+                {
+                    data[y * width + width - subwidth + x] = subdata[y * subwidth + x];
+                }
+            }
+            GDALClose(poDataset);
+        }
+
+        if (exist11)
+        {
+            GDALDataset *poDataset = static_cast<GDALDataset *>(GDALOpen(path11.c_str(), GA_ReadOnly));
+            if (!poDataset)
+            {
+                logger::WARN(path11 + " cannot be opened.");
+                logger::WARN("try to recreate " + path11);
+                fs::remove(path11);
+                makeElevationImage(z + 1, x * 2 + 1, y * 2 + 1, width, height, format, type, out_dir, state);
+                poDataset = static_cast<GDALDataset *>(GDALOpen(path11.c_str(), GA_ReadOnly));
+            }
+
+            auto code = poDataset->RasterIO(GDALRWFlag::GF_Read, 0, 0, width, height,
+                                            subdata, subwidth, subheight, GDT_Int16, 1, nullptr, 0, 0, 0);
+            if (code != CPLErr::CE_None)
+            {
+                logger::WARN(path11 + " cannot be opened.");
+                logger::WARN("try to recreate " + path11);
+                GDALClose(poDataset);
+                fs::remove(path11);
+                makeElevationImage(z + 1, x * 2 + 1, y * 2 + 1, width, height, format, type, out_dir, state);
+                poDataset = static_cast<GDALDataset *>(GDALOpen(path11.c_str(), GA_ReadOnly));
+                code = poDataset->RasterIO(GDALRWFlag::GF_Read, 0, 0, width, height,
+                                           subdata, subwidth, subheight, GDT_Int16, 1, nullptr, 0, 0, 0);
+            }
+
+            if (code != CPLErr::CE_None)
+                return;
+
+            for (int y = 0; y < subheight; y++)
+            {
+                for (int x = 0; x < subwidth; x++)
+                {
+                    data[(height - subheight + y) * width + width - subwidth + x] = subdata[y * subwidth + x];
+                }
+            }
+            GDALClose(poDataset);
         }
 
         delete subdata;
@@ -715,4 +714,46 @@ void GdemPool::makeNullImage(int width, int height, std::string format, std::str
         delete data;
         data = nullptr;
     }
+}
+
+void GdemPool::repairImage(int z, int x, int y, int width, int height,
+                           std::string format, std::string type, std::string out_dir, State &state)
+{
+    lock_guard<mutex> lock(repair_mutex);
+
+    string path = out_dir + "/" + formatNumber(z) + "/" + formatNumber(x) + "/" + formatNumber(y) + "." + type;
+    GDALDataset *poDataset = static_cast<GDALDataset *>(GDALOpen(path.c_str(), GA_ReadOnly));
+    if (!poDataset)
+    {
+        logger::WARN(path + " cannot be opened.");
+        logger::WARN("try to recreate " + path);
+        fs::remove(path);
+        makeElevationImage(z, x, y, width, height, format, type, out_dir, state);
+        poDataset = static_cast<GDALDataset *>(GDALOpen(path.c_str(), GA_ReadOnly));
+    }
+
+    width = poDataset->GetRasterXSize();
+    height = poDataset->GetRasterYSize();
+
+    int subwidth = (int)(width / 2 + 1);
+    int subheight = (int)(height / 2 + 1);
+    int16_t *subdata = new int16_t[subwidth * subheight];
+    auto code = poDataset->RasterIO(GDALRWFlag::GF_Read, 0, 0, width, height,
+                                    subdata, subwidth, subheight, GDT_Int16, 1, nullptr, 0, 0, 0);
+    if (code != CPLErr::CE_None)
+    {
+        logger::WARN(path + " cannot be opened.");
+        logger::WARN("try to recreate " + path);
+        GDALClose(poDataset);
+        fs::remove(path);
+        makeElevationImage(z, x, y, width, height, format, type, out_dir, state);
+        poDataset = static_cast<GDALDataset *>(GDALOpen(path.c_str(), GA_ReadOnly));
+        code = poDataset->RasterIO(GDALRWFlag::GF_Read, 0, 0, width, height,
+                                   subdata, subwidth, subheight, GDT_Int16, 1, nullptr, 0, 0, 0);
+    }
+
+    if (code != CPLErr::CE_None)
+        return;
+
+    GDALClose(poDataset);
 }
