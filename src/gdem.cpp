@@ -421,7 +421,7 @@ void GdemPool::makeLodImage(int z, int x, int y, int width, int height,
         int subwidth = (int)(width / 2 + 1);
         int subheight = (int)(height / 2 + 1);
         int16_t *subdata = new int16_t[subwidth * subheight];
-        
+
         if (exist00)
         {
             GDALDataset *poDataset = static_cast<GDALDataset *>(GDALOpen(path00.c_str(), GA_ReadOnly));
@@ -700,6 +700,65 @@ void GdemPool::makeNullImage(int width, int height, std::string format, std::str
             }
             pOutTIFDataset->RasterIO(GF_Write, 0, 0, width, height, (void *)data, width, height,
                                      GDT_Int16, 1, nullptr, 0, 0, 0);
+
+            pOutTIFDataset->SetProjection(default_projection.c_str());
+
+            GDALClose(pOutTIFDataset);
+            pOutTIFDataset = nullptr;
+        }
+        else
+        {
+            logger::ERROR("unsupported type, [png, tif] suppported.");
+        }
+
+        delete data;
+        data = nullptr;
+    }
+    else if (format == "rgba")
+    {
+        int8_t *data = new int8_t[width * height * 4];
+        for (int i = 0; i < width * height * 4; i++)
+            data[i] = 0;
+
+        if (icompare(type, "png"))
+        {
+            GDALDriver *pDriverMEM = GetGDALDriverManager()->GetDriverByName("MEM");
+            GDALDataset *pOutMEMDataset = pDriverMEM->Create("", width, height, 4, GDT_Byte, NULL);
+            if (!pOutMEMDataset)
+            {
+                logger::ERROR("cannot create MEM image.");
+                return;
+            }
+            pOutMEMDataset->RasterIO(GF_Write, 0, 0, width, height, (void *)data, width, height,
+                                     GDT_Byte, 4, nullptr, 0, 0, 0);
+
+            //以创建复制的方式，生成png文件
+            GDALDriver *pDriverPNG = GetGDALDriverManager()->GetDriverByName("PNG");
+            // GDALDriver *pDriverPNG = GetGDALDriverManager()->GetDriverByName("JPEG");
+            GDALDataset *tile = pDriverPNG->CreateCopy(path.c_str(), pOutMEMDataset, TRUE, 0, 0, 0);
+            if (!tile)
+            {
+                logger::ERROR("cannot create PNG image.");
+                return;
+            }
+
+            GDALClose(pOutMEMDataset);
+            pOutMEMDataset = nullptr;
+
+            GDALClose(tile);
+            tile = nullptr;
+        }
+        else if (icompare(type, "tif"))
+        {
+            GDALDriver *pDriverTIF = GetGDALDriverManager()->GetDriverByName("GTiff");
+            GDALDataset *pOutTIFDataset = pDriverTIF->Create(path.c_str(), width, height, 4, GDT_Byte, NULL);
+            if (!pOutTIFDataset)
+            {
+                logger::ERROR("cannot create TIF image.");
+                return;
+            }
+            pOutTIFDataset->RasterIO(GF_Write, 0, 0, width, height, (void *)data, width, height,
+                                     GDT_Byte, 1, nullptr, 0, 0, 0);
 
             pOutTIFDataset->SetProjection(default_projection.c_str());
 
