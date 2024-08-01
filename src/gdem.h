@@ -126,7 +126,7 @@ public:
     void makeLodImage(int z, int x, int y, int width, int height,
                       std::string format, std::string type, std::string out_dir, State &state);
 
-    void makeNullImage(int width, int height, std::string format, std::string type, std::string out_dir);
+    void makeNullImage(int width, int height, std::string format, std::string out_dir);
 
     // for debug
     void repairImage(int z, int x, int y, int width, int height,

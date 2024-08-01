@@ -388,7 +388,7 @@ int main(int argc, char **argv)
     auto monitor = startMonitoring(state);
 
     GdemPool gdem_pool;
-    gdem_pool.init(source, max_lod, tile_size, state);
+    // gdem_pool.init(source, max_lod, tile_size, state);
 
     // gdem_pool.repairImage(11, 837, 416, tile_size, tile_size, out_format, out_type, outdir, state);
     // return 0;
@@ -403,15 +403,15 @@ int main(int argc, char **argv)
     // gdem_pool.makeElevationImage(12, 1674, 820, tile_size, tile_size, out_format, out_type, outdir, state);
     //return 0;
 
-    // gdem_pool.makeNullImage(256, 256, "rgba", "png", "H:\\");
-    // return 0;
+    gdem_pool.makeNullImage(256, 256, "rgba", "E:\\");
+    return 0;
 
     if (has_tileset)
         tileset(gdem_pool, state, max_lod, tile_size, out_format, out_type, outdir);
 
     makelod(gdem_pool, state, max_lod, tile_size, out_format, out_type, outdir);
 
-    gdem_pool.makeNullImage(tile_size, tile_size, out_format, out_type, outdir);
+    gdem_pool.makeNullImage(tile_size, tile_size, out_format, outdir);
 
     monitor->stop();
 
